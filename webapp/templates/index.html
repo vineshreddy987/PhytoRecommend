@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PhytoRecommend — AI Plant Recommender</title>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f7f0;
+      color: #1a2e1a;
+      min-height: 100vh;
+    }
+
+    /* ── Header ───────────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #1b5e20, #2e7d32, #388e3c);
+      color: white;
+      padding: 28px 40px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    header .logo { font-size: 2.6rem; }
+    header h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.5px; }
+    header p  { font-size: 0.88rem; opacity: 0.85; margin-top: 4px; }
+
+    /* ── Main layout ──────────────────────────────────────────── */
+    main {
+      max-width: 1100px;
+      margin: 36px auto;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+    }
+    @media (max-width: 750px) { main { grid-template-columns: 1fr; } }
+
+    /* ── Cards ────────────────────────────────────────────────── */
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+      border: 1px solid #e0ede0;
+    }
+    .card h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #1b5e20;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Form ─────────────────────────────────────────────────── */
+    .form-group { margin-bottom: 16px; }
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #2e5e2e;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    label .hint {
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+      color: #7a9a7a;
+      font-size: 0.78rem;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #c8ddc8;
+      border-radius: 8px;
+      font-size: 0.93rem;
+      color: #1a2e1a;
+      background: #f8fdf8;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    input:focus, select:focus {
+      border-color: #2e7d32;
+      box-shadow: 0 0 0 3px rgba(46,125,50,0.12);
+      background: white;
+    }
+
+    /* BCF auto-calculate indicator */
+    #bcf { background: #f0faf0; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* ── BCF badge ────────────────────────────────────────────── */
+    .bcf-info {
+      font-size: 0.78rem;
+      color: #5a8a5a;
+      margin-top: 5px;
+    }
+
+    /* ── Submit button ────────────────────────────────────────── */
+    button[type="submit"] {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #1b5e20, #388e3c);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    button[type="submit"]:hover  { opacity: 0.92; transform: translateY(-1px); }
+    button[type="submit"]:active { transform: translateY(0); }
+    button[type="submit"]:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* ── Results panel ────────────────────────────────────────── */
+    #results-card { align-self: start; }
+
+    .placeholder {
+      text-align: center;
+      padding: 50px 20px;
+      color: #8aaa8a;
+    }
+    .placeholder .icon { font-size: 3rem; margin-bottom: 10px; }
+    .placeholder p { font-size: 0.9rem; }
+
+    /* Toxicity banner */
+    .tox-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 18px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .tox-High   { background: #fdecea; color: #c62828; border: 1px solid #ef9a9a; }
+    .tox-Medium { background: #fff8e1; color: #e65100; border: 1px solid #ffcc80; }
+    .tox-Low    { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+
+    /* Result rows */
+    .result-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      border: 1.5px solid #e0ede0;
+      background: #fafffe;
+      transition: box-shadow 0.2s;
+    }
+    .result-item:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.08); }
+    .result-item.rank-1 {
+      background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
+      border-color: #66bb6a;
+      box-shadow: 0 2px 12px rgba(76,175,80,0.15);
+    }
+
+    .rank-badge {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+    .rank-1 .rank-badge { background: #ffd700; color: #5d4037; }
+    .rank-2 .rank-badge { background: #cfd8dc; color: #37474f; }
+    .rank-3 .rank-badge { background: #d7a46a; color: #4e342e; }
+    .rank-4 .rank-badge, .rank-5 .rank-badge { background: #e8f5e9; color: #2e7d32; }
+
+    .species-info { flex: 1; min-width: 0; }
+    .species-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      font-style: italic;
+      color: #1a3e1a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .rank-1 .species-name { font-size: 1.02rem; color: #1b5e20; }
+
+    /* Confidence bar */
+    .conf-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 5px;
+    }
+    .conf-bar-bg {
+      flex: 1;
+      height: 6px;
+      background: #e0ede0;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .conf-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #66bb6a, #2e7d32);
+      transition: width 0.6s ease;
+    }
+    .rank-1 .conf-bar-fill { background: linear-gradient(90deg, #43a047, #1b5e20); }
+    .conf-pct {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #2e7d32;
+      min-width: 38px;
+      text-align: right;
+    }
+
+    /* Best recommendation highlight */
+    .best-label {
+      display: inline-block;
+      background: #1b5e20;
+      color: white;
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-left: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      vertical-align: middle;
+    }
+
+    /* ── Info box ─────────────────────────────────────────────── */
+    .info-box {
+      background: #f0f9f0;
+      border-left: 4px solid #43a047;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 0.82rem;
+      color: #2d5a2d;
+      margin-top: 20px;
+      line-height: 1.5;
+    }
+    .info-box strong { color: #1b5e20; }
+
+    /* ── Spinner ──────────────────────────────────────────────── */
+    .spinner {
+      display: none;
+      width: 22px; height: 22px;
+      border: 3px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error ────────────────────────────────────────────────── */
+    .error-msg {
+      background: #fdecea;
+      border: 1px solid #ef9a9a;
+      color: #c62828;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+    }
+
+    /* ── Known accumulators box ─────────────────────────────────── */
+    .known-box {
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.82rem;
+      color: #1b5e20;
+      margin: 12px 0;
+      line-height: 1.7;
+    }
+    .known-pill {
+      display: inline-block;
+      background: white;
+      border: 1px solid #66bb6a;
+      color: #2e7d32;
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 0.78rem;
+      font-style: italic;
+      margin: 2px 3px 2px 0;
+    }
+
+    /* ── Footer ───────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: #7a9a7a;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🌿</div>
+  <div>
+    <h1>PhytoRecommend</h1>
+    <p>AI-powered phytoremediation plant recommender — 89 species · 12-Head Self-Attention + XGBoost</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Input form ──────────────────────────────────────────── -->
+  <div class="card">
+    <h2>🧪 Site & Contamination Details</h2>
+    <form id="predict-form">
+
+      <!-- Element -->
+      <div class="form-group">
+        <label>Contaminant Element</label>
+        <select name="element" id="element" required>
+          <option value="" disabled selected>Select pollutant element…</option>
+          {% for el in elements %}
+          <option value="{{ el }}">{{ element_names.get(el, el) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Concentrations -->
+      <div class="two-col">
+        <div class="form-group">
+          <label>Soil Concentration <span class="hint">(mg/kg)</span></label>
+          <input type="number" name="soil_concentration" id="soil_conc"
+                 min="0" step="any" placeholder="e.g. 250" required />
+        </div>
+        <div class="form-group">
+          <label>Plant Concentration <span class="hint">(mg/kg)</span></label>
+          <input type="number" name="plant_concentration" id="plant_conc"
+                 min="0" step="any" placeholder="e.g. 45" required />
+        </div>
+      </div>
+
+      <!-- BCF (auto-calculated) -->
+      <div class="form-group">
+        <label>BCF — Bioconcentration Factor <span class="hint">(auto-calculated)</span></label>
+        <input type="number" name="bcf" id="bcf"
+               min="0" step="any" placeholder="Fill concentrations above to auto-calculate" />
+        <div class="bcf-info" id="bcf-hint"></div>
+      </div>
+
+      <!-- Soil properties -->
+      <div class="two-col">
+        <div class="form-group">
+          <label>Soil pH <span class="hint">(0–14)</span></label>
+          <input type="number" name="soil_ph" id="soil_ph"
+                 min="0" max="14" step="0.1" placeholder="e.g. 6.5" required />
+        </div>
+        <div class="form-group">
+          <label>Organic Matter <span class="hint">(% weight)</span></label>
+          <input type="number" name="organic_matter_pct" id="org_pct"
+                 min="0" max="100" step="0.1" placeholder="e.g. 2.5" />
+        </div>
+      </div>
+
+      <!-- Duration -->
+      <div class="form-group">
+        <label>Exposure Duration <span class="hint">(days)</span></label>
+        <input type="number" name="duration_days" id="duration"
+               min="1" step="1" placeholder="e.g. 60" />
+      </div>
+
+      <button type="submit" id="submit-btn">
+        <span id="btn-text">🌱 Get Plant Recommendations</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+
+    </form>
+
+    <div class="info-box">
+      <strong>How BCF works:</strong> BCF = Plant concentration ÷ Soil concentration.
+      BCF &gt; 1 means the plant <em>hyperaccumulates</em> the element — ideal for phytoremediation.
+      The model was trained on <strong>36,599 real phytoremediation studies</strong>.
+    </div>
+  </div>
+
+  <!-- ── Results panel ──────────────────────────────────────── -->
+  <div class="card" id="results-card">
+    <h2>🌿 Recommended Plant Species</h2>
+    <div id="results-container">
+      <div class="placeholder">
+        <div class="icon">🔬</div>
+        <p>Fill in the site details on the left<br>and click <strong>Get Plant Recommendations</strong></p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  PhytoRecommend · Per-element XGBoost models · Up to 63 species per contaminant · For research use
+</footer>
+
+<script>
+  const soilInput  = document.getElementById('soil_conc');
+  const plantInput = document.getElementById('plant_conc');
+  const bcfInput   = document.getElementById('bcf');
+  const bcfHint    = document.getElementById('bcf-hint');
+
+  // Auto-calculate BCF
+  function calcBCF() {
+    const s = parseFloat(soilInput.value);
+    const p = parseFloat(plantInput.value);
+    if (s > 0 && p >= 0) {
+      const b = (p / s).toFixed(4);
+      bcfInput.value = b;
+      const level = b >= 1 ? '🌟 Hyperaccumulator (BCF ≥ 1)' : b >= 0.1 ? '✅ Moderate accumulator' : '⚠️ Low accumulator';
+      bcfHint.textContent = level;
+    } else {
+      bcfHint.textContent = '';
+    }
+  }
+  soilInput.addEventListener('input', calcBCF);
+  plantInput.addEventListener('input', calcBCF);
+
+  // Form submit
+  document.getElementById('predict-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn     = document.getElementById('submit-btn');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btn-text');
+    const form    = e.target;
+
+    // Get values, default missing optional fields to median values
+    const payload = {
+      element:              form.element.value,
+      soil_concentration:   parseFloat(form.soil_concentration.value) || 0,
+      plant_concentration:  parseFloat(form.plant_concentration.value) || 0,
+      bcf:                  parseFloat(form.bcf.value) || 0,
+      soil_ph:              parseFloat(form.soil_ph.value) || 6.5,
+      organic_matter_pct:   parseFloat(form.organic_matter_pct.value) || 2.7,
+      duration_days:        parseFloat(form.duration_days.value) || 60,
+    };
+
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    btnText.textContent = 'Analyzing…';
+
+    try {
+      const res  = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+
+      if (data.status !== 'ok') throw new Error(data.message);
+      renderResults(data);
+    } catch (err) {
+      document.getElementById('results-container').innerHTML =
+        `<div class="error-msg">⚠️ Error: ${err.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      btnText.textContent = '🌱 Get Plant Recommendations';
+    }
+  });
+
+  function renderResults(data) {
+    const toxClass = `tox-${data.toxicity}`;
+    const toxIcon  = data.toxicity === 'High' ? '🔴' : data.toxicity === 'Medium' ? '🟠' : '🟢';
+
+    let html = `
+      <div class="tox-banner ${toxClass}">
+        ${toxIcon} <strong>${data.element}</strong> contamination —
+        Toxicity level: <strong>${data.toxicity}</strong>
+      </div>
+    `;
+
+    data.results.forEach((r) => {
+      const rankClass = `rank-${r.rank}`;
+      const best      = r.rank === 1 ? '<span class="best-label">Best Match</span>' : '';
+      const barWidth  = Math.max(r.confidence, 1).toFixed(1);
+
+      html += `
+        <div class="result-item ${rankClass}">
+          <div class="rank-badge">${r.rank}</div>
+          <div class="species-info">
+            <div class="species-name">${r.species}${best}</div>
+            <div class="conf-row">
+              <div class="conf-bar-bg">
+                <div class="conf-bar-fill" style="width:${barWidth}%"></div>
+              </div>
+              <span class="conf-pct">${r.confidence}%</span>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Known best accumulators from literature
+    if (data.known_best_accumulators && data.known_best_accumulators.length > 0) {
+      const pills = data.known_best_accumulators
+        .map(s => `<span class="known-pill">${s}</span>`).join(' ');
+      html += `
+        <div class="known-box">
+          <strong>📚 Literature: highest BCF for ${data.element}</strong><br>
+          <div style="margin-top:7px">${pills}</div>
+        </div>
+      `;
+    }
+
+    html += `
+      <div class="info-box">
+        🏆 <strong>${data.results[0].species}</strong> is the AI top pick for
+        <strong>${data.element}</strong> under your specific site conditions.
+      </div>
+    `;
+
+    document.getElementById('results-container').innerHTML = html;
+  }
+</script>
+</body>
+</html>

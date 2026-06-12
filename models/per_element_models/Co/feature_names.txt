@@ -1,0 +1,9 @@
+soil_concentration
+plant_concentration
+bcf
+soil_ph
+organic_matter_pct
+duration_days
+ph_x_log_bcf
+bcf_gt1
+bcf_lt01

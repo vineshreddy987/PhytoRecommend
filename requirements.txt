@@ -1,0 +1,11 @@
+numpy==1.26.4
+pandas==2.2.2
+scikit-learn==1.5.0
+xgboost==2.0.3
+torch==2.3.0
+imbalanced-learn==0.12.3
+shap==0.45.1
+matplotlib==3.9.0
+flask==2.2.5
+statsmodels==0.14.2
+openpyxl==3.1.2
